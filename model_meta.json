@@ -1,0 +1,27 @@
+{
+  "model_version": "toy-v0.4-calibrated",
+  "training_data_source": "synthetic-v4-ihci-risk",
+  "features": [
+    "age",
+    "sex_encoded",
+    "systolic_bp",
+    "diastolic_bp",
+    "bmi",
+    "heart_rate",
+    "random_glucose",
+    "spo2"
+  ],
+  "labels": [
+    "low_risk",
+    "moderate_risk",
+    "high_risk"
+  ],
+  "best_params": {
+    "subsample": 0.7,
+    "n_estimators": 150,
+    "max_depth": 4,
+    "learning_rate": 0.05,
+    "gamma": 0.2,
+    "colsample_bytree": 0.7
+  }
+}
