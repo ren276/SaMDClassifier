@@ -33,7 +33,7 @@ class PatientVitalsRequest(BaseModel):
 @app.post("/v1/assess")
 async def assess_patient(payload: PatientVitalsRequest):
     # 1. Deterministic Safety Gate (Red Flags)
-    if payload.spo2 < 90 or payload.systolic_bp > 180:
+    if payload.spo2 < 90 or payload.systolic_bp >= 180 or payload.diastolic_bp >= 110:
         return {
             "case_token": payload.case_token,
             "safety_screen_passed": False,
@@ -42,7 +42,7 @@ async def assess_patient(payload: PatientVitalsRequest):
                 {
                     "condition_tier": "critical_vitals_flag",
                     "probability": 1.0,
-                    "evidence_for": [f"Critical Threshold Breach: SpO2 {payload.spo2}%, Systolic BP {payload.systolic_bp} mmHg"],
+                    "evidence_for": [f"Critical Threshold Breach: SpO2 {payload.spo2}%, Systolic BP {payload.systolic_bp} mmHg, Diastolic BP {payload.diastolic_bp} mmHg"],
                     "evidence_against": []
                 }
             ],

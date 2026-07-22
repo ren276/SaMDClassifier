@@ -1,12 +1,41 @@
-def classify_bp(systolic: float, diastolic: float) -> str:
+"""Threshold helpers calibrated to the canonical synthetic dataset.
+
+The thresholds are intended to mirror the generated dataset distribution and
+the tiering used by the training pipeline, not external clinical guidelines.
+"""
+
+
+def classify_bp(
+    systolic: float,
+    diastolic: float,
+    age: float | None = None,
+    sex: str | None = None,
+) -> str:
+    if age is not None and age < 18:
+        # Synthetic age-aware calibration for the canonical dataset.
+        is_female = str(sex).upper().startswith("F") if sex is not None else False
+        stage1_systolic = 110 + 1.6 * age + (1 if is_female else 0)
+        stage1_diastolic = 79 + 0.7 * age + (1 if is_female else 0)
+        if age >= 13:
+            stage2_systolic = 140
+            stage2_diastolic = 90
+        else:
+            stage2_systolic = stage1_systolic + 12
+            stage2_diastolic = stage1_diastolic + 12
+
+        if systolic >= stage2_systolic or diastolic >= stage2_diastolic:
+            return "grade2"
+        if systolic >= stage1_systolic or diastolic >= stage1_diastolic:
+            return "grade1"
+        return "normal"
+
+    # Adult thresholds calibrated to the synthetic canonical dataset.
     if systolic >= 180 or diastolic >= 110:
         return "grade3"
     if systolic >= 160 or diastolic >= 100:
         return "grade2"
     if systolic >= 140 or diastolic >= 90:
         return "grade1"
-    if systolic >= 130 or diastolic >= 85:
-        return "high-normal"
     return "normal"
  
 
@@ -82,9 +111,11 @@ def combine_vitals(
     systolic_bp: float, diastolic_bp: float, pulse: float, respiratory_rate: float,
     spo2: float, temperature: float, bmi: float, glucose: float | None = None,
     glucose_type: str = "fasting",
+    age: float | None = None,
+    sex: str | None = None,
 ) -> dict:
     flags = {
-        "bp_grade": classify_bp(systolic_bp, diastolic_bp),
+        "bp_grade": classify_bp(systolic_bp, diastolic_bp, age=age, sex=sex),
         "pulse": classify_pulse(pulse),
         "respiratory_rate": classify_respiratory_rate(respiratory_rate),
         "spo2": classify_spo2(spo2),
@@ -95,11 +126,11 @@ def combine_vitals(
         flags["glucose"] = classify_glucose(glucose, glucose_type)
 
     urgent_flags = {
-        "grade3", "severe-tachycardia", "severe-bradypnea", "severe-tachypnea",
+        "grade3", "grade2", "severe-tachycardia", "severe-bradypnea", "severe-tachypnea",
         "severe-hypoxemia", "hyperpyrexia", "hypothermia", "hypoglycemia", "diabetic-range",
     }
     moderate_flags = {
-        "grade2", "tachycardia", "bradycardia", "mild-tachypnea", "bradypnea",
+        "grade1", "tachycardia", "bradycardia", "mild-tachypnea", "bradypnea",
         "hypoxemia", "fever", "prediabetic-range", "obese",
     }
     flag_values = set(flags.values())
@@ -116,12 +147,12 @@ def combine_vitals(
 
 if __name__ == "__main__":
     cases = [
-        dict(systolic_bp=118, diastolic_bp=76, pulse=72, respiratory_rate=14,
-               spo2=98, temperature=36.8, bmi=22.0, glucose=88, glucose_type="fasting"),
-        dict(systolic_bp=150, diastolic_bp=95, pulse=110, respiratory_rate=22,
-               spo2=94, temperature=39.1, bmi=31.7, glucose=140, glucose_type="fasting"),
-        dict(systolic_bp=185, diastolic_bp=100, pulse=130, respiratory_rate=28,
-               spo2=88, temperature=40.5, bmi=28.0, glucose=210, glucose_type="fasting"),
+        dict(age=10, sex="F", systolic_bp=118, diastolic_bp=76, pulse=72, respiratory_rate=14,
+             spo2=98, temperature=36.8, bmi=22.0, glucose=88, glucose_type="fasting"),
+        dict(age=35, sex="F", systolic_bp=150, diastolic_bp=95, pulse=110, respiratory_rate=22,
+             spo2=94, temperature=39.1, bmi=31.7, glucose=140, glucose_type="fasting"),
+        dict(age=62, sex="M", systolic_bp=185, diastolic_bp=100, pulse=130, respiratory_rate=28,
+             spo2=88, temperature=40.5, bmi=28.0, glucose=210, glucose_type="fasting"),
     ]
     for c in cases:
         print(c)

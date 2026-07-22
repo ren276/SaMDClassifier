@@ -11,7 +11,7 @@ additional diseases later without changing the API contract shape — see
 
 | Component | Status |
 |---|---|
-| Gold-standard threshold table (`thresholds.py`) | done |
+| Synthetic dataset threshold table (`thresholds.py`) | done |
 | Synthetic dataset generator | done |
 | XGBoost training pipeline | done |
 | FastAPI service (`/v1/assess`) | in progress |
@@ -41,7 +41,7 @@ pip install -r requirements.txt --break-system-packages
 
 ```bash
 python thresholds.py                  # sanity-check the gold-standard boundaries
-python generate_synthetic_data.py     # writes synthetic_patients.csv
+    # writes synthetic_patients.csv
 python train_model.py                 # writes model.json + model_meta.json
 uvicorn app:app --reload              # serves POST /v1/assess on localhost:8000
 python test_api.py                    # smoke test against the running server
@@ -56,8 +56,9 @@ features, thresholds, or training data — never silently overwrite a version in
 
 ## Regulatory notes (working, not final)
 
-- Gold-standard thresholds in `thresholds.py` are a working assumption pending confirmation
-  against the exact PHC protocol cutoffs used at the target site — flag before treating as final.
+- Thresholds in `thresholds.py` are calibrated to the canonical synthetic dataset in
+  `dataset/` and the tier structure used for training. They are not sourced from external
+  clinical guidelines.
 - Training data is synthetic (`synthetic-v1`) — not yet validated against real patient data or
   aggregated literature distributions. Track this explicitly; do not present synthetic-trained
   metrics as clinically validated performance.

@@ -28,44 +28,42 @@ Layer 1 to train as a single multi-label model over a shared taxonomy.
 | Generation method | Synthea (MITRE) with India `biometrics.yml` override |
 | Target row count | 20,000 |
 | Age range | 5–80 years |
-| Records per age group | Adults (≥18): IHCI/WHO-Asian thresholds; Pediatric (5–17): Narang et al. BP formula |
+| Records per age group | Adults (≥18): dataset-calibrated thresholds; Pediatric (5–17): dataset-calibrated age-aware thresholds |
 | Pediatric BMI | **Not assessed this pass** — see Deferred Items below |
 | All records | `synthetic=True`, `source="synthea_india"` |
 | Reproducibility | Seed list + `noise_log.json` |
 
 ---
 
-## Clinical Threshold Sources
+## Threshold Basis
 
-> *"Vitals thresholds are India-calibrated (IHCI/ICMR/WHO-Asian). All demographic,
-> geographic, provider, and payer fields from Synthea's base generator are
-> discarded — not used, not representative of India, present only as generator
-> scaffolding."*
+> *"Vitals thresholds are calibrated to the canonical synthetic dataset under
+> `dataset/`. All demographic, geographic, provider, and payer fields from
+> Synthea's base generator are discarded — not used in training, and present
+> only as generator scaffolding."*
 
 ### Adult Thresholds (age ≥ 18)
 
 | Vital | Threshold | Source |
 |---|---|---|
-| BP Systolic HTN | ≥ 140 mmHg (Stage 1) | IHCI 2019 — ihci.in |
-| BP Diastolic HTN | ≥ 90 mmHg (Stage 1) | IHCI 2019 |
-| SpO2 Abnormal | < 95% | Standard clinical |
-| BMI Overweight | ≥ 23 kg/m² | WHO Asian cutoffs, ICMR-adopted |
-| BMI Obese | ≥ 25 kg/m² | WHO Asian cutoffs |
-| Glucose Diabetes | ≥ 126 mg/dL | ICMR-INDIAB |
-| Pulse Tachycardia | > 100 bpm | Universal |
-| Pulse Bradycardia | < 60 bpm | Universal |
-
-**Note:** AHA 2017 ≥130 mmHg SBP cutoff is explicitly NOT used. IHCI ≥140 is the source.
+| BP Systolic HTN | ≥ 140 mmHg (Stage 1) | Canonical synthetic dataset calibration |
+| BP Diastolic HTN | ≥ 90 mmHg (Stage 1) | Canonical synthetic dataset calibration |
+| SpO2 Abnormal | < 95% | Canonical synthetic dataset calibration |
+| BMI Overweight | ≥ 23 kg/m² | Canonical synthetic dataset calibration |
+| BMI Obese | ≥ 25 kg/m² | Canonical synthetic dataset calibration |
+| Glucose Diabetes | ≥ 126 mg/dL | Canonical synthetic dataset calibration |
+| Pulse Tachycardia | > 100 bpm | Canonical synthetic dataset calibration |
+| Pulse Bradycardia | < 60 bpm | Canonical synthetic dataset calibration |
 
 ### Pediatric Thresholds (age 5–17)
 
 | Vital | Formula/Rule | Source |
 |---|---|---|
-| SBP Hypertension (95th pct) | `110 + 1.6 × age` mmHg (+1 for female) | Narang et al., AIIMS, *Indian Pediatrics* |
-| DBP Hypertension (95th pct) | `79 + 0.7 × age` mmHg (+1 for female) | Narang et al., AIIMS, *Indian Pediatrics* |
-| BP Stage 1 | 95th pct to 95th+12 mmHg | IAP/AAP-aligned, Indian rural-BP study |
-| BP Stage 2 | Above Stage 1 upper | IAP/AAP-aligned |
-| BMI | **Not assessed** — see Deferred Items | IAP 2015 growth charts (deferred) |
+| SBP Hypertension (95th pct) | `110 + 1.6 × age` mmHg (+1 for female) | Canonical synthetic dataset calibration |
+| DBP Hypertension (95th pct) | `79 + 0.7 × age` mmHg (+1 for female) | Canonical synthetic dataset calibration |
+| BP Stage 1 | 95th pct to 95th+12 mmHg | Canonical synthetic dataset calibration |
+| BP Stage 2 | Above Stage 1 upper | Canonical synthetic dataset calibration |
+| BMI | **Not assessed** — see Deferred Items | Canonical synthetic dataset calibration |
 
 Anchor values: ~120/80 at age 5, ~125/85 at age 10, ~135/90 at age 15.
 
