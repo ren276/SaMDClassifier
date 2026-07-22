@@ -1,0 +1,30 @@
+{
+  "noise_seed": 999,
+  "applied_at": "2026-07-22T07:53:11.414187Z",
+  "row_count": 20124,
+  "note": "Noise applied AFTER tiering/labeling. Labels (abnormal_params, icd_*, symptom_signal_strength) are based on pre-noise values and not recalculated.",
+  "params": {
+    "bp_systolic": {
+      "sigma": 1.0,
+      "clip": 2.0
+    },
+    "bp_diastolic": {
+      "sigma": 1.0,
+      "clip": 2.0
+    },
+    "pulse": {
+      "sigma": 1.0,
+      "clip": 2.0
+    },
+    "bmi": {
+      "sigma": 0.15,
+      "clip": 0.3
+    },
+    "spo2": {
+      "sigma": 0.5,
+      "clip": 1.0,
+      "floor": 70.0,
+      "ceil": 100.0
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
-  "model_version": "toy-v0.4-calibrated",
-  "training_data_source": "synthetic-v4-ihci-risk",
+  "model_version": "toy-v0.5-canonical-tier-bridge",
+  "training_data_source": "dataset/canonical_dataset.csv",
   "features": [
     "age",
     "sex_encoded",
@@ -8,7 +8,6 @@
     "diastolic_bp",
     "bmi",
     "heart_rate",
-    "random_glucose",
     "spo2"
   ],
   "labels": [
@@ -19,9 +18,26 @@
   "best_params": {
     "subsample": 0.7,
     "n_estimators": 150,
-    "max_depth": 4,
-    "learning_rate": 0.05,
-    "gamma": 0.2,
+    "max_depth": 5,
+    "learning_rate": 0.1,
+    "gamma": 0,
     "colsample_bytree": 0.7
-  }
+  },
+  "target_definition": {
+    "source_column": "tier",
+    "mapping": {
+      "1": "low_risk",
+      "2": "moderate_risk",
+      "3": "high_risk",
+      "4": "high_risk"
+    }
+  },
+  "validation_metrics": {
+    "accuracy": 0.9588940543185711,
+    "f1_macro": 0.954509458103349
+  },
+  "rows": 20435,
+  "train_rows": 16348,
+  "test_rows": 4087,
+  "calibration_used_for_evaluation": true
 }

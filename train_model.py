@@ -5,14 +5,26 @@ import xgboost as xgb
 import shap
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score
 
-# Load Data
-df = pd.read_csv("synthetic_patients.csv")
+# Load canonical dataset
+df = pd.read_csv("dataset/canonical_dataset.csv")
 
-features = ["age", "sex_encoded", "systolic_bp", "diastolic_bp", "bmi", "heart_rate", "random_glucose", "spo2"]
+# The canonical dataset does not contain glucose. Pulse is the closest match to
+# the current API's heart_rate field, so we train on the shared vital-sign set.
+df = df.assign(
+    age=df["age_at_encounter"],
+    sex_encoded=df["sex"].map({"M": 0, "F": 1}),
+    systolic_bp=df["bp_systolic"],
+    diastolic_bp=df["bp_diastolic"],
+    heart_rate=df["pulse"],
+)
+
+features = ["age", "sex_encoded", "systolic_bp", "diastolic_bp", "bmi", "heart_rate", "spo2"]
 X = df[features]
-y = df["risk_level"]
+
+# Collapse the four canonical tiers into the three risk bands used by the API.
+y = df["tier"].map({1: 0, 2: 1, 3: 2, 4: 2})
 
 labels = ["low_risk", "moderate_risk", "high_risk"]
 
@@ -55,22 +67,38 @@ calibrated_model.fit(X_train, y_train)
 
 # Evaluation
 preds = calibrated_model.predict(X_test)
+predicted_probs = calibrated_model.predict_proba(X_test)
 print("\n=== CLASSIFICATION REPORT ===")
 print(classification_report(y_test, preds, target_names=labels))
 
 print("\n=== CONFUSION MATRIX ===")
 print(pd.DataFrame(confusion_matrix(y_test, preds), index=labels, columns=labels))
+print("\n=== SUMMARY METRICS ===")
+print(f"accuracy: {accuracy_score(y_test, preds):.4f}")
+print(f"f1_macro: {f1_score(y_test, preds, average='macro'):.4f}")
 
 # Save Best Model & Metadata
 best_model.save_model("model.json")
 
 with open("model_meta.json", "w") as f:
     json.dump({
-        "model_version": "toy-v0.4-calibrated",
-        "training_data_source": "synthetic-v4-ihci-risk",
+        "model_version": "toy-v0.5-canonical-tier-bridge",
+        "training_data_source": "dataset/canonical_dataset.csv",
         "features": features,
         "labels": labels,
-        "best_params": search.best_params_
+        "best_params": search.best_params_,
+        "target_definition": {
+            "source_column": "tier",
+            "mapping": {"1": "low_risk", "2": "moderate_risk", "3": "high_risk", "4": "high_risk"}
+        },
+        "validation_metrics": {
+            "accuracy": accuracy_score(y_test, preds),
+            "f1_macro": f1_score(y_test, preds, average='macro')
+        },
+        "rows": int(len(df)),
+        "train_rows": int(len(X_train)),
+        "test_rows": int(len(X_test)),
+        "calibration_used_for_evaluation": True
     }, f, indent=2)
 
 print("\nSaved calibrated model.json and model_meta.json successfully.")

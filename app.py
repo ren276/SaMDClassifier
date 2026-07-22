@@ -27,7 +27,7 @@ class PatientVitalsRequest(BaseModel):
     diastolic_bp: float
     bmi: float
     heart_rate: float
-    random_glucose: float
+    random_glucose: Optional[float] = None
     spo2: float
 
 @app.post("/v1/assess")
@@ -59,7 +59,6 @@ async def assess_patient(payload: PatientVitalsRequest):
         "diastolic_bp": payload.diastolic_bp,
         "bmi": payload.bmi,
         "heart_rate": payload.heart_rate,
-        "random_glucose": payload.random_glucose,
         "spo2": payload.spo2
     }])
     
@@ -103,7 +102,7 @@ async def assess_patient(payload: PatientVitalsRequest):
     investigations = []
     if payload.systolic_bp >= 140 or payload.diastolic_bp >= 90:
         investigations.extend(["ECG (Resting)", "Lipid Profile", "Serum Creatinine"])
-    if payload.random_glucose >= 140:
+    if payload.random_glucose is not None and payload.random_glucose >= 140:
         investigations.extend(["HbA1c Test", "Fasting Blood Sugar"])
 
     return {

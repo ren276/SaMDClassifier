@@ -1,0 +1,122 @@
+{
+  "_comment": "Machine-readable metadata for the DRISHTI foundational synthetic vitals dataset.",
+  "dataset_name": "DRISHTI PHC Foundational Synthetic Vitals",
+  "version": "1.0.0-foundation",
+  "synthetic": true,
+  "source_generator": "Synthea (MITRE Corporation)",
+  "synthea_version": "check synthea/build.gradle for version",
+  "biometrics_override": "synthea-international/in/src/main/resources/biometrics.yml",
+  "generation_purpose": "Bootstrap training data for DRISHTI/PHC SaMD offline AI correlation kernel (IIT Indore, Prof. Banda, HarSaRK). To be replaced by real data upon CDSCO/government API access.",
+
+  "age_range": {
+    "min_age": 5,
+    "max_age": 80
+  },
+
+  "target_row_count": 20000,
+
+  "thresholds": {
+    "adults_age_gte_18": {
+      "bp_systolic_htn_stage1_min": {"value": 140, "unit": "mmHg", "source": "IHCI 2019", "url": "https://ihci.in"},
+      "bp_diastolic_htn_stage1_min": {"value": 90, "unit": "mmHg", "source": "IHCI 2019", "url": "https://ihci.in"},
+      "spo2_normal_min": {"value": 95.0, "unit": "%", "source": "Standard clinical"},
+      "bmi_overweight_min": {"value": 23.0, "unit": "kg/m2", "source": "WHO Asian BMI cutoffs, ICMR-adopted", "url": "https://www.who.int/nutrition/publications/bmi_asia_who_june_2004.pdf"},
+      "bmi_obese_min": {"value": 25.0, "unit": "kg/m2", "source": "WHO Asian BMI cutoffs"},
+      "glucose_diabetes_min": {"value": 126, "unit": "mg/dL", "source": "ICMR-INDIAB"},
+      "pulse_tachy_min": {"value": 101, "unit": "bpm", "source": "Universal"},
+      "pulse_brady_max": {"value": 59, "unit": "bpm", "source": "Universal"},
+      "note": "AHA 2017 >=130 mmHg SBP cutoff is explicitly NOT used. IHCI >=140 is the source."
+    },
+    "pediatric_age_5_to_17": {
+      "bp_systolic_htn_formula": {
+        "formula": "110 + 1.6 * age + (1 if female else 0)",
+        "unit": "mmHg",
+        "source": "Narang et al., AIIMS",
+        "publication": "Indian Pediatrics",
+        "anchor_values": "~120/80 at age 5, ~125/85 at age 10, ~135/90 at age 15"
+      },
+      "bp_diastolic_htn_formula": {
+        "formula": "79 + 0.7 * age + (1 if female else 0)",
+        "unit": "mmHg",
+        "source": "Narang et al., AIIMS",
+        "publication": "Indian Pediatrics"
+      },
+      "bp_staging": {
+        "source": "IAP/AAP-aligned, Indian rural-BP study",
+        "stage1": "95th pct to 95th+12 mmHg (or 130/80-139/89 for age>=13)",
+        "stage2": "Above Stage 1 upper (or >=140/90 for age>=13)"
+      },
+      "bmi": {
+        "status": "NOT_ASSESSED_THIS_PASS",
+        "strategy": "B2",
+        "note": "IAP 2015 growth chart-based BMI labeling deferred. Requires lookup table data/iap_bmi_percentiles.csv. Re-run step3 when table is available. No Synthea regeneration needed.",
+        "source_pending": "IAP 2015 growth charts"
+      }
+    }
+  },
+
+  "label_architecture": {
+    "type": "hierarchical_multi_label",
+    "levels": ["icd_chapter", "icd_block", "icd_candidate"],
+    "icd_chapter": {"nullable": false, "description": "ICD-10 chapter (system level), always populated"},
+    "icd_block": {"nullable": false, "description": "ICD-10 block/range (category level), always populated"},
+    "icd_candidate": {"nullable": true, "description": "Specific ICD-10 code. Null where combination does not narrow below block level — not an error. Null rows handled by LLM/retrieval Layer 2."},
+    "differential_candidates": {"nullable": false, "description": "Pipe-separated ranked list, at icd_block granularity"},
+    "symptom_signal_strength": {
+      "nullable": false,
+      "values": ["strong", "supportive", "nonspecific"],
+      "description": "Confidence-basis training signal for Layer 1. Feeds physician-verification banner. Independently queryable per ISO 14971 H-01-H-10 series.",
+      "note": "Labels are based on pre-noise values and are not recalculated after noise injection (step6)."
+    },
+    "source_of_labels": "abnormal_params combinations mapped via config.py ICD_MAPPING table — NOT from Synthea disease modules"
+  },
+
+  "tiers": {
+    "tier1": {"abnormal_params_count": 1, "target_count": 200, "sampling": "balanced across param types"},
+    "tier2": {"abnormal_params_count": 2, "target_count": 200, "sampling": "balanced across pairs"},
+    "tier3": {"abnormal_params_count": 3, "target_count": 100, "sampling": "balanced across triples"},
+    "tier4": {"abnormal_params_count": "4+", "target_count": "all", "sampling": "none — natural combinatorial count"}
+  },
+
+  "noise": {
+    "applied_after_labeling": true,
+    "prenoise_backup": "canonical_dataset_prenoise.csv",
+    "log": "noise_log.json",
+    "params": {
+      "bp_systolic":  {"sigma_mmHg": 1.0, "clip_mmHg": 2.0},
+      "bp_diastolic": {"sigma_mmHg": 1.0, "clip_mmHg": 2.0},
+      "pulse":        {"sigma_bpm": 1.0,  "clip_bpm": 2.0},
+      "bmi":          {"sigma_kgm2": 0.15, "clip_kgm2": 0.3},
+      "spo2":         {"sigma_pct": 0.5,  "clip_pct": 1.0, "floor": 70, "ceil": 100}
+    }
+  },
+
+  "columns": [
+    {"name": "patient_id",              "dtype": "str",   "nullable": false, "unit": "UUID"},
+    {"name": "encounter_date",          "dtype": "date",  "nullable": false, "unit": "ISO-8601"},
+    {"name": "age_at_encounter",        "dtype": "int",   "nullable": false, "unit": "years"},
+    {"name": "sex",                     "dtype": "str",   "nullable": false, "values": ["M", "F"]},
+    {"name": "bp_systolic",             "dtype": "float", "nullable": false, "unit": "mmHg"},
+    {"name": "bp_diastolic",            "dtype": "float", "nullable": false, "unit": "mmHg"},
+    {"name": "pulse",                   "dtype": "float", "nullable": false, "unit": "bpm"},
+    {"name": "spo2",                    "dtype": "float", "nullable": false, "unit": "%"},
+    {"name": "bmi",                     "dtype": "float", "nullable": true,  "unit": "kg/m2", "note": "May be NaN for some encounters"},
+    {"name": "tier",                    "dtype": "int",   "nullable": false, "values": [1, 2, 3, 4]},
+    {"name": "abnormal_params",         "dtype": "str",   "nullable": false, "format": "comma-separated, alpha-sorted"},
+    {"name": "symptom_string",          "dtype": "str",   "nullable": false},
+    {"name": "symptom_signal_strength", "dtype": "str",   "nullable": false, "values": ["strong", "supportive", "nonspecific"]},
+    {"name": "icd_chapter",             "dtype": "str",   "nullable": false},
+    {"name": "icd_block",               "dtype": "str",   "nullable": false},
+    {"name": "icd_candidate",           "dtype": "str",   "nullable": true,  "note": "Null by design for rows below block precision"},
+    {"name": "differential_candidates", "dtype": "str",   "nullable": false, "format": "pipe-separated, 2-4 entries"},
+    {"name": "synthetic",               "dtype": "bool",  "nullable": false, "value": true},
+    {"name": "source",                  "dtype": "str",   "nullable": false, "value": "synthea_india"}
+  ],
+
+  "contact": {
+    "researcher": "Sandesh",
+    "institution": "IIT Indore",
+    "supervisor": "Prof. Banda",
+    "project": "HarSaRK / DRISHTI PHC SaMD"
+  }
+}
