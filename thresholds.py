@@ -1,10 +1,3 @@
-"""Threshold helpers calibrated to the canonical synthetic dataset.
-
-The thresholds are intended to mirror the generated dataset distribution and
-the tiering used by the training pipeline, not external clinical guidelines.
-"""
-
-
 def classify_bp(
     systolic: float,
     diastolic: float,

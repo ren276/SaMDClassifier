@@ -1,5 +1,5 @@
 {
-  "model_version": "toy-v0.5-canonical-tier-bridge",
+  "model_version": "toy-v0.6-observed-glucose-4tier",
   "training_data_source": "dataset/canonical_dataset.csv",
   "features": [
     "age",
@@ -8,7 +8,8 @@
     "diastolic_bp",
     "bmi",
     "heart_rate",
-    "spo2"
+    "spo2",
+    "glucose"
   ],
   "labels": [
     "low_risk",
@@ -32,12 +33,27 @@
       "4": "high_risk"
     }
   },
+  "glucose_missing_strategy": "native_xgboost_nan_routing_no_imputation",
   "validation_metrics": {
-    "accuracy": 0.9588940543185711,
-    "f1_macro": 0.954509458103349
+    "accuracy": 0.9270762997974341,
+    "f1_macro": 0.8870696688221998,
+    "f1_per_class": {
+      "low_risk": 0.9402035623409669,
+      "moderate_risk": 0.9367534756216958,
+      "high_risk": 0.784251968503937
+    },
+    "kfold_f1_macro_mean": 0.8874787694013266,
+    "kfold_f1_macro_std": 0.005917021257991699,
+    "kfold_f1_macro_scores": [
+      0.8909467387823389,
+      0.8827491837296094,
+      0.8825835670995157,
+      0.8835663383540475,
+      0.8975480190411215
+    ]
   },
-  "rows": 20435,
-  "train_rows": 16348,
-  "test_rows": 4087,
-  "calibration_used_for_evaluation": true
+  "rows": 22212,
+  "train_rows": 17769,
+  "test_rows": 4443,
+  "calibration_used_for_evaluation": false
 }

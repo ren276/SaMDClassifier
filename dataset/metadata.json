@@ -1,7 +1,7 @@
 {
   "_comment": "Machine-readable metadata for the DRISHTI foundational synthetic vitals dataset.",
   "dataset_name": "DRISHTI PHC Foundational Synthetic Vitals",
-  "version": "1.0.0-foundation",
+  "version": "1.1.0-foundation-rev6",
   "synthetic": true,
   "source_generator": "Synthea (MITRE Corporation)",
   "synthea_version": "check synthea/build.gradle for version",
@@ -13,43 +13,49 @@
     "max_age": 80
   },
 
-  "target_row_count": 20000,
+  "target_row_count": 27000,
 
   "thresholds": {
-    "basis": "canonical_dataset.csv calibrated on synthetic vitals only",
     "adults_age_gte_18": {
-      "bp_systolic_htn_stage1_min": {"value": 140, "unit": "mmHg", "source": "canonical synthetic dataset calibration"},
-      "bp_diastolic_htn_stage1_min": {"value": 90, "unit": "mmHg", "source": "canonical synthetic dataset calibration"},
-      "spo2_normal_min": {"value": 95.0, "unit": "%", "source": "canonical synthetic dataset calibration"},
-      "bmi_overweight_min": {"value": 23.0, "unit": "kg/m2", "source": "canonical synthetic dataset calibration"},
-      "bmi_obese_min": {"value": 25.0, "unit": "kg/m2", "source": "canonical synthetic dataset calibration"},
-      "glucose_diabetes_min": {"value": 126, "unit": "mg/dL", "source": "canonical synthetic dataset calibration"},
-      "pulse_tachy_min": {"value": 101, "unit": "bpm", "source": "canonical synthetic dataset calibration"},
-      "pulse_brady_max": {"value": 59, "unit": "bpm", "source": "canonical synthetic dataset calibration"},
-      "note": "Thresholds are calibrated from the synthetic canonical dataset and its tiering, not from external clinical guidelines."
+      "bp_systolic_htn_stage1_min": {"value": 140, "unit": "mmHg", "source": "IHCI 2019", "url": "https://ihci.in"},
+      "bp_diastolic_htn_stage1_min": {"value": 90, "unit": "mmHg", "source": "IHCI 2019", "url": "https://ihci.in"},
+      "spo2_normal_min": {"value": 95.0, "unit": "%", "source": "Standard clinical"},
+      "bmi_overweight_min": {"value": 23.0, "unit": "kg/m2", "source": "WHO Asian BMI cutoffs, ICMR-adopted", "url": "https://www.who.int/nutrition/publications/bmi_asia_who_june_2004.pdf"},
+      "bmi_obese_min": {"value": 25.0, "unit": "kg/m2", "source": "WHO Asian BMI cutoffs"},
+      "glucose_prediabetes_min": {"value": 140, "unit": "mg/dL", "source": "RSSDI / ICMR-INDIAB random (non-fasting) glucose screening criterion", "note": "Distinct from fasting glucose criteria (100/126) -- do not conflate with biometrics.yml's generation bins, see note in glucose_generation_bins."},
+      "glucose_diabetes_min": {"value": 200, "unit": "mg/dL", "source": "WHO/ADA criterion, adopted in ICMR-INDIAB opportunistic screening"},
+      "glucose_generation_bins": {"value": [70, 100, 145, 220], "unit": "mg/dL", "source": "synthea-international/in/biometrics.yml", "note": "Controls what raw glucose value Synthea draws for patients its own diabetes_severity module already tagged normal/prediabetic/diabetic -- NOT the classification threshold applied by this pipeline (see glucose_prediabetes_min/glucose_diabetes_min above). Widened from an earlier fasting-style [70,100,126,200] because that shape caused glucose_high to realize in <1.1% of draws under a random-glucose classification threshold."},
+      "pulse_tachy_min": {"value": 101, "unit": "bpm", "source": "Universal"},
+      "pulse_brady_max": {"value": 59, "unit": "bpm", "source": "Universal"},
+      "note": "AHA 2017 >=130 mmHg SBP cutoff is explicitly NOT used. IHCI >=140 is the source."
     },
     "pediatric_age_5_to_17": {
       "bp_systolic_htn_formula": {
         "formula": "110 + 1.6 * age + (1 if female else 0)",
         "unit": "mmHg",
-        "source": "canonical synthetic dataset calibration",
+        "source": "Narang et al., AIIMS",
+        "publication": "Indian Pediatrics",
         "anchor_values": "~120/80 at age 5, ~125/85 at age 10, ~135/90 at age 15"
       },
       "bp_diastolic_htn_formula": {
         "formula": "79 + 0.7 * age + (1 if female else 0)",
         "unit": "mmHg",
-        "source": "canonical synthetic dataset calibration"
+        "source": "Narang et al., AIIMS",
+        "publication": "Indian Pediatrics"
       },
       "bp_staging": {
-        "source": "canonical synthetic dataset calibration",
+        "source": "IAP/AAP-aligned, Indian rural-BP study",
         "stage1": "95th pct to 95th+12 mmHg (or 130/80-139/89 for age>=13)",
         "stage2": "Above Stage 1 upper (or >=140/90 for age>=13)"
       },
       "bmi": {
         "status": "NOT_ASSESSED_THIS_PASS",
         "strategy": "B2",
-        "note": "Pediatric BMI labeling remains deferred until a dataset-calibrated lookup table is added. No Synthea regeneration needed.",
-        "source_pending": "canonical synthetic dataset calibration"
+        "note": "IAP 2015 growth chart-based BMI labeling deferred. Requires lookup table data/iap_bmi_percentiles.csv. Re-run step3 when table is available. No Synthea regeneration needed.",
+        "source_pending": "IAP 2015 growth charts"
+      },
+      "glucose": {
+        "note": "Same 140/200 mg/dL random-glucose cutoff as adults, no age-gating"
       }
     }
   },
@@ -67,14 +73,24 @@
       "description": "Confidence-basis training signal for Layer 1. Feeds physician-verification banner. Independently queryable per ISO 14971 H-01-H-10 series.",
       "note": "Labels are based on pre-noise values and are not recalculated after noise injection (step6)."
     },
-    "source_of_labels": "abnormal_params combinations mapped via config.py ICD_MAPPING table — NOT from Synthea disease modules"
+    "source_of_labels": "abnormal_params combinations mapped via config.py ICD_MAPPING table (resolved via config.resolve_condition) — NOT from Synthea disease modules",
+    "weighted_multi_candidate_resolution": {
+      "description": "Rev 6: some ICD_MAPPING entries map a frozenset key to a weighted list of candidate conditions instead of one flat condition, for keys where no vital-sign fingerprint distinguishes the candidates (e.g. isolated pulse_high could be sinus_tachycardia, anxiety, anemia, or hyperthyroidism). config.resolve_condition() deterministically selects one candidate per row via a stable SHA-256 hash of (patient_id, encounter_date, salt), so the same row always resolves the same way, and step3 (labeling) and step4 (symptom/drug sampling) never disagree on which condition was selected.",
+      "fever_pattern_signal": "A synthetic epidemiological routing flag (config.assess_fever_pattern), NOT a measured vital -- ~8% base rate, ~22% during monsoon (Jun-Sep). Exists because a 6-vital system has no channel to carry infectious-disease signal; without it, malaria/dengue/typhoid/chikungunya/UTI/gastroenteritis/TB/LRTI could never realize as a primary icd_candidate. Excluded from tier/_param_count."
+    }
   },
 
   "tiers": {
-    "tier1": {"abnormal_params_count": 1, "target_count": 200, "sampling": "balanced across param types"},
-    "tier2": {"abnormal_params_count": 2, "target_count": 200, "sampling": "balanced across pairs"},
-    "tier3": {"abnormal_params_count": 3, "target_count": 100, "sampling": "balanced across triples"},
-    "tier4": {"abnormal_params_count": "4+", "target_count": "all", "sampling": "none — natural combinatorial count"}
+    "_comment": "Tiers 5/6 (5-6 simultaneous abnormal vitals) occur at <0.001% in Synthea's baseline generation for ambulatory PHC visits — judged clinically implausible to synthetically inject rather than observe, so the tier scheme was collapsed to 4 to reflect only distributions that occur through genuine simulated pathways.",
+    "tier1": {"abnormal_params_count": 0, "target_ratio": 0.35},
+    "tier2": {"abnormal_params_count": 1, "target_ratio": 0.57},
+    "tier3": {"abnormal_params_count": 2, "target_ratio": 0.065},
+    "tier4": {"abnormal_params_count": "3+", "target_ratio": 0.015, "note": "High acuity ceiling -- merges >=3 abnormal params"},
+    "counting_params": ["bp_systolic", "bp_diastolic", "pulse_high", "pulse_low", "bmi", "glucose_high", "spo2"],
+    "excluded_from_count": ["fever_pattern"],
+    "floors": {
+      "min_glucose_high_rows": 500
+    }
   },
 
   "noise": {
@@ -82,12 +98,65 @@
     "prenoise_backup": "canonical_dataset_prenoise.csv",
     "log": "noise_log.json",
     "params": {
-      "bp_systolic":  {"sigma_mmHg": 1.0, "clip_mmHg": 2.0},
-      "bp_diastolic": {"sigma_mmHg": 1.0, "clip_mmHg": 2.0},
-      "pulse":        {"sigma_bpm": 1.0,  "clip_bpm": 2.0},
-      "bmi":          {"sigma_kgm2": 0.15, "clip_kgm2": 0.3},
-      "spo2":         {"sigma_pct": 0.5,  "clip_pct": 1.0, "floor": 70, "ceil": 100}
+      "bp_systolic":  {"sigma_mmHg": 4.0,   "clip_mmHg": 15.0, "floor": 60.0},
+      "bp_diastolic": {"sigma_mmHg": 3.0,   "clip_mmHg": 15.0, "floor": 30.0},
+      "pulse":        {"sigma_bpm": 3.0,    "clip_bpm": 15.0,  "floor": 30.0},
+      "bmi":          {"sigma_kgm2": 0.5,   "clip_kgm2": 2.0,  "floor": 10.0},
+      "spo2":         {"sigma_pct": 1.0,    "clip_pct": 5.0,   "floor": 70.0, "ceil": 100.0},
+      "glucose":      {"sigma_mgdl": 10.0,  "clip_mgdl": 30.0, "floor": 40.0, "source": "Glucometer/point-of-care measurement error, ~10 mg/dL conservative end of ISO 15197 accuracy band"}
     }
+  },
+
+  "demographics_reweighting": {
+    "_comment": "Rev 6: Synthea's demographic generator is US-pattern by default; no India demographics/geography module exists in synthea-international/in (unlike de/fr/gb/etc). Corrected post-hoc in step2b_demographic_reweight.py rather than in Synthea itself.",
+    "target_age_sex_distribution": {
+      "source": "Approximate Census 2011 broad age-band population shares, renormalized to the pipeline's 5-80 age window. Precision not required for a synthetic bootstrap dataset.",
+      "age_bands": {
+        "5-14": 0.19, "15-24": 0.19, "25-34": 0.17, "35-44": 0.14,
+        "45-54": 0.11, "55-64": 0.08, "65-74": 0.07, "75-80": 0.05
+      },
+      "sex_share": {"M": 0.515, "F": 0.485, "source": "Census 2011 sex ratio ~940F:1000M"}
+    },
+    "method": "Accumulate a raw pool ~4x (RAW_POOL_MULTIPLIER) the target row count, then resample per age-decade x sex cell to match the target shares -- with replacement for under-represented cells (typically elderly bands), without replacement (downsample) for over-represented ones.",
+    "raw_pool_multiplier": 4
+  },
+
+  "disease_coverage": {
+    "_comment": "Rev 6: full list of condition_tag/icd_candidate pairs introduced or restructured, for ISO 14971 traceability. 'resolution' is either 'flat' (single unique ICD_MAPPING key) or 'weighted_multi_candidate' (shares a key with sibling conditions, selected via config.resolve_condition).",
+    "conditions": [
+      {"condition_tag": "essential_hypertension_stage1", "icd_candidate": "I10", "resolution": "weighted_multi_candidate", "key": ["bp_systolic"]},
+      {"condition_tag": "white_coat_htn", "icd_candidate": null, "resolution": "weighted_multi_candidate", "key": ["bp_systolic"]},
+      {"condition_tag": "migraine", "icd_candidate": "G43.9", "resolution": "weighted_multi_candidate", "key": ["bp_systolic"]},
+      {"condition_tag": "obesity", "icd_candidate": "E66", "resolution": "weighted_multi_candidate", "key": ["bmi"]},
+      {"condition_tag": "osteoarthritis", "icd_candidate": "M17", "resolution": "weighted_multi_candidate", "key": ["bmi"]},
+      {"condition_tag": "sinus_tachycardia", "icd_candidate": null, "resolution": "weighted_multi_candidate", "key": ["pulse_high"]},
+      {"condition_tag": "anxiety_panic_disorder", "icd_candidate": "F41.0", "resolution": "weighted_multi_candidate", "key": ["pulse_high"]},
+      {"condition_tag": "anemia", "icd_candidate": "D50", "resolution": "weighted_multi_candidate", "key": ["pulse_high"]},
+      {"condition_tag": "hyperthyroidism", "icd_candidate": "E05.9", "resolution": "weighted_multi_candidate", "key": ["pulse_high"]},
+      {"condition_tag": "hypothyroidism", "icd_candidate": "E03.9", "resolution": "flat", "key": ["pulse_low", "bmi"]},
+      {"condition_tag": "type_2_diabetes_mellitus", "icd_candidate": "E11", "resolution": "flat", "key": ["glucose_high"]},
+      {"condition_tag": "metabolic_syndrome", "icd_candidate": null, "resolution": "flat", "key": ["glucose_high", "bmi"]},
+      {"condition_tag": "diabetes_with_hypertension", "icd_candidate": "E11", "resolution": "flat", "key": ["glucose_high", "bp_systolic", "bp_diastolic"]},
+      {"condition_tag": "nonspecific_viral_fever", "icd_candidate": null, "resolution": "weighted_multi_candidate", "key": ["fever_pattern"]},
+      {"condition_tag": "urinary_tract_infection", "icd_candidate": "N39.0", "resolution": "weighted_multi_candidate", "key": ["fever_pattern"]},
+      {"condition_tag": "acute_gastroenteritis", "icd_candidate": "A09", "resolution": "weighted_multi_candidate", "key": ["fever_pattern"]},
+      {"condition_tag": "typhoid", "icd_candidate": "A01.0", "resolution": "weighted_multi_candidate", "key": ["fever_pattern", "fever_pattern+pulse_high"]},
+      {"condition_tag": "dengue_fever", "icd_candidate": "A90", "resolution": "weighted_multi_candidate", "key": ["fever_pattern", "fever_pattern+pulse_high"]},
+      {"condition_tag": "malaria", "icd_candidate": "B54", "resolution": "weighted_multi_candidate", "key": ["fever_pattern+pulse_high"]},
+      {"condition_tag": "chikungunya", "icd_candidate": "A92.0", "resolution": "weighted_multi_candidate", "key": ["fever_pattern+pulse_high"]},
+      {"condition_tag": "lower_respiratory_tract_infection", "icd_candidate": "J22", "resolution": "weighted_multi_candidate", "key": ["fever_pattern+spo2"]},
+      {"condition_tag": "pulmonary_tuberculosis", "icd_candidate": "A15", "resolution": "weighted_multi_candidate", "key": ["fever_pattern+spo2"]},
+      {"condition_tag": "dengue_fever_with_warning_signs", "icd_candidate": "A91", "resolution": "weighted_multi_candidate", "key": ["fever_pattern+spo2"]},
+      {"condition_tag": "severe_pneumonia_with_sepsis", "icd_candidate": null, "resolution": "weighted_multi_candidate", "key": ["fever_pattern+spo2+pulse_high"]},
+      {"condition_tag": "dengue_hemorrhagic_fever", "icd_candidate": "A91", "resolution": "weighted_multi_candidate", "key": ["fever_pattern+spo2+pulse_high"]},
+      {"condition_tag": "severe_malaria", "icd_candidate": "B50", "resolution": "weighted_multi_candidate", "key": ["fever_pattern+spo2+pulse_high"]}
+    ]
+  },
+
+  "pediatric_safety": {
+    "invariant": "age_at_encounter < 18 => drug_name='None' AND drug_dosage='None' AND pediatric_referral_flag=true, regardless of resolved condition",
+    "enforcement": "Blanket override in step4_symptom_pairing.py::run() (not per-condition), independently hard-fail-checked (AssertionError) in step5_aggregate.py::run() and run_pipeline.py::run_spot_checks()",
+    "history_note": "This invariant's supporting columns (drug_name/drug_dosage/pediatric_referral_flag) were dropped once from a prior dataset rebuild that only re-ran the noise-injection step without re-running the full label pipeline -- hence the double hard-fail check."
   },
 
   "columns": [
@@ -99,15 +168,26 @@
     {"name": "bp_diastolic",            "dtype": "float", "nullable": false, "unit": "mmHg"},
     {"name": "pulse",                   "dtype": "float", "nullable": false, "unit": "bpm"},
     {"name": "spo2",                    "dtype": "float", "nullable": false, "unit": "%"},
-    {"name": "bmi",                     "dtype": "float", "nullable": true,  "unit": "kg/m2", "note": "May be NaN for some encounters"},
+    {"name": "bmi",                     "dtype": "float", "nullable": true,  "unit": "kg/m2", "note": "Opportunistic, may be NaN"},
+    {"name": "glucose",                 "dtype": "float", "nullable": true,  "unit": "mg/dL", "note": "Random/non-fasting. Opportunistic and sparser than bmi; deliberately NOT imputed when missing"},
+    {"name": "bp_systolic_observed",    "dtype": "float", "nullable": false, "unit": "mmHg"},
+    {"name": "bp_diastolic_observed",   "dtype": "float", "nullable": false, "unit": "mmHg"},
+    {"name": "pulse_observed",          "dtype": "float", "nullable": false, "unit": "bpm"},
+    {"name": "spo2_observed",           "dtype": "float", "nullable": false, "unit": "%"},
+    {"name": "bmi_observed",            "dtype": "float", "nullable": true,  "unit": "kg/m2"},
+    {"name": "glucose_observed",        "dtype": "float", "nullable": true,  "unit": "mg/dL"},
     {"name": "tier",                    "dtype": "int",   "nullable": false, "values": [1, 2, 3, 4]},
-    {"name": "abnormal_params",         "dtype": "str",   "nullable": false, "format": "comma-separated, alpha-sorted"},
+    {"name": "abnormal_params",         "dtype": "str",   "nullable": false, "format": "comma-separated, alpha-sorted; may include fever_pattern"},
+    {"name": "fever_pattern_flag",      "dtype": "bool",  "nullable": false, "note": "Synthetic epidemiological routing signal, NOT a measured vital"},
     {"name": "symptom_string",          "dtype": "str",   "nullable": false},
     {"name": "symptom_signal_strength", "dtype": "str",   "nullable": false, "values": ["strong", "supportive", "nonspecific"]},
+    {"name": "drug_name",               "dtype": "str",   "nullable": false, "note": "'None' for age < 18 -- see pediatric_safety"},
+    {"name": "drug_dosage",             "dtype": "str",   "nullable": false, "note": "'None' for age < 18 -- see pediatric_safety"},
     {"name": "icd_chapter",             "dtype": "str",   "nullable": false},
     {"name": "icd_block",               "dtype": "str",   "nullable": false},
     {"name": "icd_candidate",           "dtype": "str",   "nullable": true,  "note": "Null by design for rows below block precision"},
     {"name": "differential_candidates", "dtype": "str",   "nullable": false, "format": "pipe-separated, 2-4 entries"},
+    {"name": "pediatric_referral_flag", "dtype": "bool",  "nullable": false, "note": "true for age < 18 -- see pediatric_safety"},
     {"name": "synthetic",               "dtype": "bool",  "nullable": false, "value": true},
     {"name": "source",                  "dtype": "str",   "nullable": false, "value": "synthea_india"}
   ],
