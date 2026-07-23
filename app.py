@@ -1,5 +1,12 @@
 import json
 import logging
+
+# `pipeline_glue` pulls in sentence-transformers -> torch (RAG treatment lookup). On Windows,
+# loading torch's bundled OpenMP runtime AFTER xgboost/shap have already initialized theirs
+# corrupts DLL init state (OSError WinError 1114 loading c10.dll). Import it first so torch's
+# runtime initializes cleanly before xgboost/shap load their own.
+import pipeline_glue
+
 import xgboost as xgb
 import shap
 import pandas as pd
@@ -9,7 +16,6 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 import refine_diagnosis
-import pipeline_glue
 from api_schemas import KernelReportOutput
 
 logger = logging.getLogger(__name__)
