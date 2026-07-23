@@ -1,10 +1,18 @@
 import json
+import logging
 import xgboost as xgb
 import shap
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
+
+import refine_diagnosis
+import pipeline_glue
+from api_schemas import KernelReportOutput
+
+logger = logging.getLogger(__name__)
 
 # Load Model & Metadata
 try:
@@ -59,7 +67,8 @@ async def assess_patient(payload: PatientVitalsRequest):
         "diastolic_bp": payload.diastolic_bp,
         "bmi": payload.bmi,
         "heart_rate": payload.heart_rate,
-        "spo2": payload.spo2
+        "spo2": payload.spo2,
+        "glucose": payload.random_glucose if payload.random_glucose is not None else float("nan")
     }])
     
     # 3. Model Inference
@@ -123,6 +132,66 @@ async def assess_patient(payload: PatientVitalsRequest):
             "calibrated": True
         }
     }
+
+class ClinicalEvaluationRequest(BaseModel):
+    case_token: str
+    symptom_string: str
+    age: int
+    sex: str
+    systolic_bp: float
+    diastolic_bp: float
+    bmi: float
+    heart_rate: float
+    random_glucose: Optional[float] = None
+    spo2: float
+    respiratory_rate: Optional[float] = None
+    temperature: Optional[float] = None
+
+
+@app.post("/api/v1/evaluate", response_model=KernelReportOutput)
+async def evaluate_patient(payload: ClinicalEvaluationRequest):
+    try:
+        sex_encoded = 0 if payload.sex.upper() == "M" else 1
+
+        refine_vitals = {
+            "age": payload.age,
+            "sex_encoded": sex_encoded,
+            "systolic_bp": payload.systolic_bp,
+            "diastolic_bp": payload.diastolic_bp,
+            "bmi": payload.bmi,
+            "heart_rate": payload.heart_rate,
+            "spo2": payload.spo2,
+            "glucose": payload.random_glucose if payload.random_glucose is not None else float("nan"),
+        }
+
+        triage_vitals = {
+            "systolic_bp": payload.systolic_bp,
+            "diastolic_bp": payload.diastolic_bp,
+            "pulse": payload.heart_rate,
+            "respiratory_rate": payload.respiratory_rate,
+            "spo2": payload.spo2,
+            "temperature": payload.temperature,
+            "bmi": payload.bmi,
+            "glucose": payload.random_glucose,
+            "glucose_type": "fasting",
+            "age": payload.age,
+            "sex": payload.sex,
+        }
+
+        refinement_output = refine_diagnosis.refine(payload.symptom_string, refine_vitals)
+        result = pipeline_glue.execute_full_clinical_pipeline(refinement_output, payload.age, triage_vitals)
+        return KernelReportOutput(**result)
+    except Exception:
+        logger.exception("evaluate_patient failed (case_token=%s)", payload.case_token)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "internal_error",
+                "message": "An internal error occurred while processing this evaluation.",
+                "case_token": payload.case_token,
+            },
+        )
+
 
 if __name__ == "__main__":
     import uvicorn
