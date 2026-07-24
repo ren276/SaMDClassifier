@@ -30,25 +30,28 @@ import xgboost as xgb
 from pydantic import BaseModel
 from scipy.sparse import hstack
 
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # --- Load Classifier A (vitals -> risk tier) ---
-with open("model_meta.json") as f:
+with open(os.path.join(PROJECT_ROOT, "models", "model_meta.json")) as f:
     tier_meta = json.load(f)
 
 tier_model = xgb.XGBClassifier()
-tier_model.load_model("model.json")
+tier_model.load_model(os.path.join(PROJECT_ROOT, "models", "model.json"))
 tier_features = tier_meta["features"]
 tier_labels = tier_meta["labels"]  # order matches predict_proba column order
 tier_mapping = tier_meta["target_definition"]["mapping"]  # {"1": "low_risk", ...}
 
 # --- Load Classifier B (symptom_string -> ranked icd_candidate) ---
-with open("symptom_model_meta.json") as f:
+with open(os.path.join(PROJECT_ROOT, "models", "symptom_model_meta.json")) as f:
     symptom_meta = json.load(f)
 
 symptom_model = xgb.XGBClassifier()
-symptom_model.load_model("symptom_model.json")
-word_vectorizer = joblib.load("symptom_vectorizer_word.joblib")
-char_vectorizer = joblib.load("symptom_vectorizer_char.joblib")
-label_encoder = joblib.load("symptom_label_encoder.joblib")
+symptom_model.load_model(os.path.join(PROJECT_ROOT, "models", "symptom_model.json"))
+word_vectorizer = joblib.load(os.path.join(PROJECT_ROOT, "models", "symptom_vectorizer_word.joblib"))
+char_vectorizer = joblib.load(os.path.join(PROJECT_ROOT, "models", "symptom_vectorizer_char.joblib"))
+label_encoder = joblib.load(os.path.join(PROJECT_ROOT, "models", "symptom_label_encoder.joblib"))
 icd_labels = label_encoder.classes_.tolist()
 
 
@@ -56,7 +59,7 @@ def _build_tier_profile():
     """For each icd_candidate, its empirical distribution over Classifier A's
     3 risk labels (same tier collapse Classifier A trains on, read from
     model_meta.json so this can't drift out of sync with Classifier A)."""
-    df = pd.read_csv(symptom_meta["training_data_source"])
+    df = pd.read_csv(os.path.join(PROJECT_ROOT, symptom_meta["training_data_source"]))
     df = df[df["icd_candidate"].notna()].copy()
     df["risk_label"] = df["tier"].astype(str).map(tier_mapping)
 

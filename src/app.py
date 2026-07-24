@@ -5,6 +5,10 @@ import logging
 # loading torch's bundled OpenMP runtime AFTER xgboost/shap have already initialized theirs
 # corrupts DLL init state (OSError WinError 1114 loading c10.dll). Import it first so torch's
 # runtime initializes cleanly before xgboost/shap load their own.
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import pipeline_glue
 
 import xgboost as xgb
