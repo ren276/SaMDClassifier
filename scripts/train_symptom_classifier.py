@@ -11,8 +11,11 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split, RandomizedSearchCV, StratifiedKFold, cross_val_score
 from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score
 
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 MODEL_VERSION = "symptom-clf-v0.1-tfidf-xgboost"
-TRAINING_DATA_SOURCE = "dataset/canonical_dataset.csv"
+TRAINING_DATA_SOURCE = os.path.join(PROJECT_ROOT, "dataset", "canonical_dataset.csv")
 
 # Load canonical dataset
 df = pd.read_csv(TRAINING_DATA_SOURCE)
@@ -106,10 +109,10 @@ for label, score in zip(labels, per_class_f1):
     print(f"f1[{label}]: {score:.4f}  recall: {recall:.4f}  support: {support}{flag}")
 
 # Save Model & Vectorizers
-best_model.save_model("symptom_model.json")
-joblib.dump(word_vectorizer, "symptom_vectorizer_word.joblib")
-joblib.dump(char_vectorizer, "symptom_vectorizer_char.joblib")
-joblib.dump(label_encoder, "symptom_label_encoder.joblib")
+best_model.save_model(os.path.join(PROJECT_ROOT, "models", "symptom_model.json"))
+joblib.dump(word_vectorizer, os.path.join(PROJECT_ROOT, "models", "symptom_vectorizer_word.joblib"))
+joblib.dump(char_vectorizer, os.path.join(PROJECT_ROOT, "models", "symptom_vectorizer_char.joblib"))
+joblib.dump(label_encoder, os.path.join(PROJECT_ROOT, "models", "symptom_label_encoder.joblib"))
 
 
 def predict_ranked(symptom_text, model=best_model, word_vec=word_vectorizer, char_vec=char_vectorizer, encoder=label_encoder):
@@ -150,10 +153,10 @@ meta = {
     "calibration_used_for_evaluation": False
 }
 
-with open("symptom_model_meta.json", "w") as f:
+with open(os.path.join(PROJECT_ROOT, "models", "symptom_model_meta.json"), "w") as f:
     json.dump(meta, f, indent=2)
 
-with open("symptom_training_log.jsonl", "a") as f:
+with open(os.path.join(PROJECT_ROOT, "logs", "symptom_training_log.jsonl"), "a") as f:
     f.write(json.dumps({"timestamp": run_timestamp, **meta}) + "\n")
 
 print("\nSaved symptom_model.json, vectorizers, symptom_model_meta.json, appended symptom_training_log.jsonl.")

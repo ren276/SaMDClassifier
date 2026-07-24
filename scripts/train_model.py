@@ -7,8 +7,11 @@ import xgboost as xgb
 from sklearn.model_selection import train_test_split, RandomizedSearchCV, StratifiedKFold, cross_val_score
 from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score
 
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 MODEL_VERSION = "toy-v0.6-observed-glucose-4tier"
-TRAINING_DATA_SOURCE = "dataset/canonical_dataset.csv"
+TRAINING_DATA_SOURCE = os.path.join(PROJECT_ROOT, "dataset", "canonical_dataset.csv")
 
 # Load canonical dataset
 df = pd.read_csv(TRAINING_DATA_SOURCE)
@@ -111,7 +114,7 @@ for label, score in zip(labels, per_class_f1):
     print(f"f1[{label}]: {score:.4f}")
 
 # Save Best Model & Metadata
-best_model.save_model("model.json")
+best_model.save_model(os.path.join(PROJECT_ROOT, "models", "model.json"))
 
 run_timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -140,10 +143,10 @@ meta = {
     "calibration_used_for_evaluation": False
 }
 
-with open("model_meta.json", "w") as f:
+with open(os.path.join(PROJECT_ROOT, "models", "model_meta.json"), "w") as f:
     json.dump(meta, f, indent=2)
 
-with open("training_log.jsonl", "a") as f:
+with open(os.path.join(PROJECT_ROOT, "logs", "training_log.jsonl"), "a") as f:
     f.write(json.dumps({"timestamp": run_timestamp, **meta}) + "\n")
 
 print("\nSaved model.json and model_meta.json, appended training_log.jsonl.")

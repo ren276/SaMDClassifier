@@ -4,6 +4,10 @@ plain-assert style -- not a pytest suite). Run directly:
     python test_integration.py
 """
 
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
+
 import refine_diagnosis
 import pipeline_glue
 from indian_brands import enrich_with_indian_brands

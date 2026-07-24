@@ -20,13 +20,16 @@ from api_schemas import KernelReportOutput
 
 logger = logging.getLogger(__name__)
 
+import os
+
 # Load Model & Metadata
 try:
-    with open("model_meta.json", "r") as f:
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    with open(os.path.join(PROJECT_ROOT, "models", "model_meta.json"), "r") as f:
         meta = json.load(f)
     
     model = xgb.XGBClassifier()
-    model.load_model("model.json")
+    model.load_model(os.path.join(PROJECT_ROOT, "models", "model.json"))
     explainer = shap.TreeExplainer(model)
 except Exception as e:
     raise RuntimeError(f"Failed to load model files: {str(e)}")

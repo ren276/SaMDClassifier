@@ -11,7 +11,7 @@
 set -euo pipefail
 
 SRC="${1:-${DRISHTI_DATASET_DIR:-/media/sandesh/extra-ssd/dataset/dataset-make/drishti_dataset}}"
-DEST="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/dataset"
+DEST="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/dataset"
 
 if [ ! -f "$SRC/canonical_dataset.csv" ]; then
     echo "ERROR: $SRC/canonical_dataset.csv not found. Pass the drishti_dataset dir as \$1." >&2

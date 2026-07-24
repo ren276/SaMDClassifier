@@ -11,15 +11,12 @@ additional diseases later without changing the API contract shape — see
 
 | Component | Status |
 |---|---|
-| Synthetic dataset threshold table (`thresholds.py`) | done |
+| Synthetic dataset threshold table (`src/thresholds.py`) | done |
 | Synthetic dataset generator | done |
 | XGBoost training pipeline | done |
-| FastAPI service (`/v1/assess`) | in progress |
-| SHAP-based reasoning strings | in progress |
-| Smoke tests (`test_api.py`) | not started |
-| Real (non-synthetic) training data | not started — blocked on data source |
-| Second disease (diabetes risk) | not started — deferred until v1 is stable |
-| Encryption envelope for external/govt API calls | not started — deferred, see contract doc |
+| FastAPI service (`/v1/assess` & `/api/v1/evaluate`) | done |
+| SHAP-based reasoning strings | done |
+| Smoke tests (`tests/test_api.py` & `tests/test_integration.py`) | done |
 
 ## Why this is a separate repo from SaMD-App
 
@@ -40,21 +37,21 @@ pip install -r requirements.txt --break-system-packages
 ## Pipeline, in order
 
 ```bash
-./sync_dataset.sh [drishti_dataset_dir]  # pull the latest canonical dataset from the
+./scripts/sync_dataset.sh [drishti_dataset_dir]  # pull the latest canonical dataset from the
                                           # upstream drishti_pipeline output (default source
                                           # dir is machine-local, see script header; override
                                           # via $1 or $DRISHTI_DATASET_DIR). Run this whenever
                                           # the upstream pipeline has regenerated the dataset —
                                           # do NOT train against a stale local copy.
-python thresholds.py                  # sanity-check the gold-standard boundaries
+python src/thresholds.py              # sanity-check the gold-standard boundaries
     # writes synthetic_patients.csv
-python train_model.py                 # writes model.json + model_meta.json, appends training_log.jsonl
-python train_symptom_classifier.py    # writes symptom_model.json + symptom_model_meta.json,
-                                       # symptom_vectorizer_{word,char}.joblib,
-                                       # symptom_label_encoder.joblib, appends
-                                       # symptom_training_log.jsonl
-uvicorn app:app --reload              # serves POST /v1/assess on localhost:8000
-python test_api.py                    # smoke test against the running server
+python scripts/train_model.py         # writes models/model.json + models/model_meta.json, appends logs/training_log.jsonl
+python scripts/train_symptom_classifier.py  # writes models/symptom_model.json + models/symptom_model_meta.json,
+                                       # models/symptom_vectorizer_{word,char}.joblib,
+                                       # models/symptom_label_encoder.joblib, appends
+                                       # logs/symptom_training_log.jsonl
+uvicorn src.app:app --reload          # serves POST /v1/assess on localhost:8000
+python tests/test_api.py              # smoke test against the running server
 ```
 
 ## Model versioning
@@ -121,7 +118,7 @@ a different model, not a Classifier A retrain).
 
 Combines Classifier A's vitals-based risk tier with Classifier B's symptom-based ranked
 differential into one recalibrated ranked list (top 3-5, never a single winner) for physician
-review. Not wired into `app.py` yet.
+review. Fully wired into the `/api/v1/evaluate` endpoint in `src/app.py`.
 
 - **Method chosen: weighted blend (not a secondary ML model, not discrete if/else rules).**
   Each `icd_candidate`'s symptom-model probability is multiplied by a `vitals_tier_alignment`
@@ -168,3 +165,22 @@ review. Not wired into `app.py` yet.
 
 - `docs/api-contracts/classifier-v1.md` — frozen request/response contract
 - `docs/api-contracts/classifier-v1.examples.json` — shared fixtures for tests on both sides
+
+## Connecting to the SaMD Android App
+
+The SaMD Android App expects this classifier to be running as a standalone HTTP service. 
+
+1. **Start the Classifier Server**
+   Ensure the server is running on your machine:
+   ```bash
+   uvicorn src.app:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+2. **Configure the Android App**
+   The Android app needs to know the IP address of the machine running this service. 
+   - Find your development machine's local network IP (e.g., `192.168.1.100`).
+   - In the SaMD-App codebase, update the `NetworkModule` or the relevant configuration file to point to this IP address (e.g., `http://192.168.1.100:8000/v1/assess`).
+   - Ensure both your Android device/emulator and your development machine are on the same local network.
+
+3. **API Contracts**
+   The app will send POST requests to the `/v1/assess` and `/api/v1/evaluate` endpoints. The exact JSON structure for requests and responses must strictly follow the schema defined in `docs/api-contracts/classifier-v1.md`. If you change the API in this Python repository, you must update the Android data classes to match.

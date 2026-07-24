@@ -50,7 +50,7 @@ def run_test(name, payload):
     except requests.exceptions.ConnectionError:
         print("❌ ERROR: Connection refused.")
         print("Make sure your FastAPI server is running in another terminal tab using:")
-        print("uvicorn app:app --reload")
+        print("uvicorn src.app:app --reload")
     print("\n")
 
 if __name__ == "__main__":
