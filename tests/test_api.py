@@ -1,7 +1,8 @@
+import os
 import requests
 import json
 
-API_URL = "http://127.0.0.1:8000/v1/assess"
+API_URL = os.environ.get("API_URL", "http://127.0.0.1:8000/v1/assess")
 
 # Test Case 1: Priya Sharma (From your Android Mockup)
 # Borderline Grade 1 BP and High BMI

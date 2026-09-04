@@ -28,10 +28,21 @@ a version bump.
 
 ## Setup
 
+### Option 1: Conda Environment (on Drive)
 ```bash
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-pip install -r requirements.txt --break-system-packages
+conda activate /media/acps/twoTBDrive/conda-envs/samd_classifier
+```
+
+### Option 2: Docker / Docker Compose
+```bash
+# Start container in detached mode (mapped to port 8001 by default)
+docker compose up -d
+
+# Check status and health
+docker compose ps
+
+# Run full API endpoint tests
+python tests/test_api_endpoints.py --url http://127.0.0.1:8001
 ```
 
 ## Pipeline, in order
