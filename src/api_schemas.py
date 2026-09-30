@@ -8,7 +8,7 @@ pipeline correctly declined to recommend a drug.
 
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class RankedCandidate(BaseModel):
@@ -17,6 +17,9 @@ class RankedCandidate(BaseModel):
     original_symptom_confidence: float
     vitals_tier_alignment: float
     why: str
+    # Same parts as `why`, built without a digit or "%": safe to show a community worker, who
+    # must not be shown a model score. `why` embeds the scores and is for physicians.
+    why_plain: str
 
 
 class DiagnosticSummary(BaseModel):
@@ -75,8 +78,30 @@ class SafetyAndTriage(BaseModel):
     failure_reason: Optional[str] = None
 
 
+class CalibratedFlags(BaseModel):
+    vitals: Optional[bool] = None
+    symptom: Optional[bool] = None
+
+
+class EvaluateModelMetadata(BaseModel):
+    """Identity of everything that produced this result. Hashes are of the artifacts the app
+    verified against ARTIFACT_MANIFEST.json at start-up. `calibrated` is read from each
+    artifact's metadata: None means the artifact does not say."""
+
+    vitals_model_version: str
+    vitals_model_sha256: str
+    symptom_model_version: str
+    symptom_model_sha256: str
+    calibrated: CalibratedFlags
+    embedding_model: str
+
+
 class KernelReportOutput(BaseModel):
+    # `model_metadata` is a wire name shared with /v1/assess; pydantic reserves the `model_` prefix.
+    model_config = ConfigDict(protected_namespaces=())
+
     diagnostic_summary: DiagnosticSummary
     nlem_treatment: NlemTreatment
     brand_mapping: Optional[BrandMapping] = None
     safety_and_triage: SafetyAndTriage
+    model_metadata: Optional[EvaluateModelMetadata] = None

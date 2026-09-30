@@ -29,7 +29,7 @@ import chromadb
 BASE_DIR = Path(__file__).resolve().parent
 PDF_PATH = BASE_DIR / "corpus" / "nlem2022.pdf"
 VECTOR_STORE_DIR = BASE_DIR / "vector_store"
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+from embedding_pin import EMBEDDING_MODEL_NAME, EMBEDDING_MODEL_REVISION
 
 MEDICINES_COLLECTION = "nlem_medicines"
 ALPHA_INDEX_COLLECTION = "nlem_alpha_index"
@@ -242,7 +242,7 @@ def main():
     print(f"Extracted {len(medicine_items)} medicine chunks from the NLEM table.")
     print(f"Extracted {len(alpha_entries)} entries from the alphabetical index.")
 
-    model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    model = SentenceTransformer(EMBEDDING_MODEL_NAME, revision=EMBEDDING_MODEL_REVISION)
 
     VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
     client = chromadb.PersistentClient(path=str(VECTOR_STORE_DIR))
