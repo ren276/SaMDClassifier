@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      # CPU torch first: requirements.txt pulls sentence-transformers, whose default torch wheel
+      # drags in about 2 GB of CUDA libraries a test runner has no use for. Installing the CPU
+      # build up front satisfies the requirement, so the next step keeps it.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      # The artifact manifest is verified when the app is imported, so this also fails on any
+      # artifact that no longer matches ARTIFACT_MANIFEST.json.
+      - name: Unit tests
+        run: python -m unittest discover -s tests
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      # The build downloads about 2 GB of CUDA wheels and a 600 MB model into the image, and the
+      # runner's disk is shared with toolchains this job never uses. Remove them first.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          df -h /
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          build-args: BUILD_COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=min

@@ -28,14 +28,19 @@ a version bump.
 
 ## Setup
 
-### Option 1: Conda Environment (on Drive)
+### Option 1: Python Virtual Environment (.venv)
 ```bash
-conda activate /media/acps/twoTBDrive/conda-envs/samd_classifier
+source .venv/bin/activate
+```
+
+Or if using Conda:
+```bash
+conda activate samd_classifier
 ```
 
 ### Option 2: Docker / Docker Compose
 ```bash
-# Start container in detached mode (mapped to port 8001 by default)
+# Start container in detached mode (published on ports 8000 and 8001)
 docker compose up -d
 
 # Check status and health
@@ -44,6 +49,24 @@ docker compose ps
 # Run full API endpoint tests
 python tests/test_api_endpoints.py --url http://127.0.0.1:8001
 ```
+
+## Artifact manifest
+
+`ARTIFACT_MANIFEST.json` lists every artifact an endpoint loads (the vitals and symptom models and
+their metadata, both vectorizers, the label encoder, `dataset/canonical_dataset.csv`, and the NLEM
+vector store) with a digest. The service verifies it at import and **refuses to start** on a
+missing file or a mismatch, so the `model_version` it reports is bound to the bytes it serves.
+
+Regenerate it deliberately, after a reviewed change to any listed file (retrained model, new
+dataset, re-ingested vector store, new embedding revision in `src/rag/embedding_pin.py`):
+
+```bash
+python scripts/write_artifact_manifest.py
+```
+
+It records what is on disk now; it does not retrain or validate anything. Commit the result with
+the change that caused it. The Chroma store is content-digested rather than byte-hashed because a
+normal open rewrites its files; see `src/artifact_integrity.py`.
 
 ## Pipeline, in order
 
