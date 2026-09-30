@@ -7,8 +7,9 @@ services:
     container_name: samd-classifier
     restart: unless-stopped
     ports:
-      # Map host port (default 8001 to avoid clashing with port 8000) to container port 8000
-      - "${SAMD_PORT:-8001}:8000"
+      # Expose on both port 8000 (Android app / backend default) and 8001
+      - "8000:8000"
+      - "8001:8000"
     environment:
       - PORT=8000
       - PYTHONUNBUFFERED=1
