@@ -1,0 +1,71 @@
+{
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2@1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+  "entries": [
+    {
+      "kind": "file_sha256",
+      "path": "models/model.json",
+      "sha256": "1621668c636e935d446f0868913b8ac8d98a36fbfaafbdd0f6c7816a22991603"
+    },
+    {
+      "kind": "file_sha256",
+      "path": "models/model_meta.json",
+      "sha256": "8a2a2950b78fc0b7628822253abd661e19cdda9d8a487a2ab438ca0ba2300b06"
+    },
+    {
+      "kind": "file_sha256",
+      "path": "models/symptom_model.json",
+      "sha256": "ae4d4b8a4cd3136f0fc4739c74a9434c56a48e9fc78558b764cd912556a2f645"
+    },
+    {
+      "kind": "file_sha256",
+      "path": "models/symptom_model_meta.json",
+      "sha256": "5c6dff072ef198288263e73f7d8f40ed1e601ee12d4d93e53267994d3605cbac"
+    },
+    {
+      "kind": "file_sha256",
+      "path": "models/symptom_vectorizer_word.joblib",
+      "sha256": "70ad019f2f91084536b128916b6c5e25f91b303a93f1b8c323bf74e6573d26ab"
+    },
+    {
+      "kind": "file_sha256",
+      "path": "models/symptom_vectorizer_char.joblib",
+      "sha256": "bc9c996d19102c185a3d5432a30544d65e3c79a266ddc2f35d563c16e6455c5f"
+    },
+    {
+      "kind": "file_sha256",
+      "path": "models/symptom_label_encoder.joblib",
+      "sha256": "5663d6ba6c16774329e12e50ba61a58105027d4155f40554f74e4f727dd9712f"
+    },
+    {
+      "kind": "file_sha256",
+      "path": "dataset/canonical_dataset.csv",
+      "sha256": "4564bb4dd818071e3abbcaf4c329ddec4149a1d8fbb7eab9ef751b5cc2520f7e"
+    },
+    {
+      "kind": "file_sha256",
+      "path": "src/rag/vector_store/56d6712d-3331-4ae6-9a8e-19adfa14c66a/header.bin",
+      "sha256": "a0e81c3b22454233bc12d0762f06dcca48261a75231cf87c79b75e69a6c00150"
+    },
+    {
+      "kind": "file_sha256",
+      "path": "src/rag/vector_store/56d6712d-3331-4ae6-9a8e-19adfa14c66a/link_lists.bin",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "kind": "file_sha256",
+      "path": "src/rag/vector_store/9c3b2e5e-09ae-4877-b660-49e65d57ab7b/header.bin",
+      "sha256": "a0e81c3b22454233bc12d0762f06dcca48261a75231cf87c79b75e69a6c00150"
+    },
+    {
+      "kind": "file_sha256",
+      "path": "src/rag/vector_store/9c3b2e5e-09ae-4877-b660-49e65d57ab7b/link_lists.bin",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "kind": "chroma_content_digest_v1",
+      "path": "src/rag/vector_store/chroma.sqlite3",
+      "sha256": "258aa15ca6fea8c3d214d1e2cee68cf6b861dfb79e557abbedf768495f0ca250"
+    }
+  ],
+  "schema": 1
+}

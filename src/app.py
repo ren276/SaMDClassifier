@@ -9,6 +9,13 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Verify every artifact against ARTIFACT_MANIFEST.json BEFORE anything loads one, so a swapped or
+# corrupted model fails the import (and the container's healthcheck) instead of being served
+# under a version string it does not match. Stdlib only, so it is safe to run before torch.
+import artifact_integrity
+
+VERIFIED_ARTIFACTS = artifact_integrity.verify_manifest()
+
 import pipeline_glue
 
 import xgboost as xgb
@@ -21,6 +28,7 @@ from typing import List, Optional
 
 import refine_diagnosis
 from api_schemas import KernelReportOutput
+from rag.embedding_pin import EMBEDDING_MODEL_NAME, EMBEDDING_MODEL_REVISION
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +49,37 @@ try:
     calibrated = meta.get("calibration_used_for_evaluation")
 except Exception as e:
     raise RuntimeError(f"Failed to load model files: {str(e)}")
+
+MODEL_SHA256 = VERIFIED_ARTIFACTS["models/model.json"]
+
+
+def assess_metadata() -> dict:
+    """`version` is a deprecated duplicate of `model_version`, kept while the deployed consumers
+    still read it (the backend and device read `model_version`; the older image emitted only
+    `version`). Remove it once no consumer pins to it."""
+    return {
+        "model_version": meta["model_version"],
+        "version": meta["model_version"],
+        "model_sha256": MODEL_SHA256,
+        "calibrated": calibrated,
+    }
+
+
+def evaluate_metadata() -> dict:
+    tier_meta = refine_diagnosis.tier_meta
+    symptom_meta = refine_diagnosis.symptom_meta
+    return {
+        "vitals_model_version": tier_meta["model_version"],
+        "vitals_model_sha256": VERIFIED_ARTIFACTS["models/model.json"],
+        "symptom_model_version": symptom_meta["model_version"],
+        "symptom_model_sha256": VERIFIED_ARTIFACTS["models/symptom_model.json"],
+        "calibrated": {
+            "vitals": tier_meta.get("calibration_used_for_evaluation"),
+            "symptom": symptom_meta.get("calibration_used_for_evaluation"),
+        },
+        "embedding_model": f"{EMBEDDING_MODEL_NAME}@{EMBEDDING_MODEL_REVISION}",
+    }
+
 
 app = FastAPI(title="SaMD PHC Classifier Engine", version="1.0")
 
@@ -72,7 +111,7 @@ async def assess_patient(payload: PatientVitalsRequest):
                 }
             ],
             "recommended_investigations": ["Immediate Oxygen Therapy", "Emergency Medical Transfer"],
-            "model_metadata": {"version": meta["model_version"], "calibrated": calibrated}
+            "model_metadata": assess_metadata()
         }
         
     # 2. Vectorize Data for XGBoost
@@ -144,10 +183,7 @@ async def assess_patient(payload: PatientVitalsRequest):
             }
         ],
         "recommended_investigations": list(set(investigations)),
-        "model_metadata": {
-            "version": meta["model_version"],
-            "calibrated": calibrated
-        }
+        "model_metadata": assess_metadata()
     }
 
 class ClinicalEvaluationRequest(BaseModel):
@@ -197,6 +233,7 @@ async def evaluate_patient(payload: ClinicalEvaluationRequest):
 
         refinement_output = refine_diagnosis.refine(payload.symptom_string, refine_vitals)
         result = pipeline_glue.execute_full_clinical_pipeline(refinement_output, payload.age, triage_vitals)
+        result["model_metadata"] = evaluate_metadata()
         return KernelReportOutput(**result)
     except Exception:
         logger.exception("evaluate_patient failed (case_token=%s)", payload.case_token)
@@ -216,6 +253,9 @@ async def health_check():
         "status": "healthy",
         "service": "samd-classifier",
         "model_version": meta.get("model_version", "unknown"),
+        "calibrated": calibrated,
+        # Baked in by `docker build --build-arg BUILD_COMMIT=<sha>`; "unknown" otherwise.
+        "build_commit": os.environ.get("BUILD_COMMIT", "unknown"),
     }
 
 

@@ -90,6 +90,43 @@ def get_vitals_tier(vitals: dict):
     return predicted_label, dict(zip(tier_labels, probs))
 
 
+_ORDINALS = (
+    "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth",
+    "tenth", "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth", "sixteenth",
+    "seventeenth", "eighteenth",
+)
+_PLAIN_FALLBACK = "The symptoms and the vitals were both used to rank this candidate."
+
+
+def _plain_why(predicted_tier, original_rank, new_rank, direction):
+    """The same parts as `why`, with no digit and no percent sign, for a community worker.
+
+    Built from the parts, not by stripping `why`: stripping would leave dangling fragments, and a
+    number that survived the strip would reach a worker. The candidate's own code is left out
+    because an ICD code contains digits; the screen already shows it next to this line."""
+    ranked = (
+        f"Symptoms ranked this candidate {_ORDINALS[original_rank - 1]}. "
+        if 1 <= original_rank <= len(_ORDINALS)
+        else ""
+    )
+    tier = str(predicted_tier).replace("_", " ")
+    moved = ""
+    if new_rank < original_rank:
+        moved = ", moving it up"
+    elif new_rank > original_rank:
+        moved = ", moving it down"
+    adjustment = {
+        "boosted": "raised",
+        "penalized": "lowered",
+    }.get(direction, "left unchanged")
+    text = (
+        f"{ranked}The vitals suggest a {tier} pattern, so this candidate's score was "
+        f"{adjustment}{moved}."
+    )
+    # Safety net: a tier label or a future edit must never smuggle a number in.
+    return _PLAIN_FALLBACK if any(ch.isdigit() or ch == "%" for ch in text) else text
+
+
 def refine(symptom_string, vitals: dict, top_k: int = 5):
     """Re-ranks Classifier B's full candidate list using Classifier A's vitals
     signal. Always returns at least 3 candidates, never a single winner."""
@@ -129,16 +166,18 @@ def refine(symptom_string, vitals: dict, top_k: int = 5):
         why = (
             f"Symptom model ranked {candidate} #{original_rank} ({original_conf:.1%}). "
             f"Classifier A predicts {predicted_tier}; {candidate} typically presents at "
-            f"[{profile_str}] -- alignment {alignment:.2f}, confidence {direction} to "
+            f"[{profile_str}] -- alignment {alignment:.2f}, score adjusted to "
             f"{adj_conf:.1%}{movement}."
         )
+        why_plain = _plain_why(predicted_tier, original_rank, new_rank, direction)
 
         results.append({
             "icd_candidate": candidate,
             "adjusted_confidence": adj_conf,
             "original_symptom_confidence": original_conf,
             "vitals_tier_alignment": alignment,
-            "why": why
+            "why": why,
+            "why_plain": why_plain,
         })
 
     return results

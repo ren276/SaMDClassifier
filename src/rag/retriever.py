@@ -15,6 +15,7 @@ from ingest import (
     MEDICINES_COLLECTION,
     ALPHA_INDEX_COLLECTION,
     EMBEDDING_MODEL_NAME,
+    EMBEDDING_MODEL_REVISION,
 )
 
 QUERY_TEMPLATE = "essential medicines for {disease_name}"
@@ -22,7 +23,7 @@ QUERY_TEMPLATE = "essential medicines for {disease_name}"
 
 @lru_cache(maxsize=1)
 def _get_model():
-    return SentenceTransformer(EMBEDDING_MODEL_NAME)
+    return SentenceTransformer(EMBEDDING_MODEL_NAME, revision=EMBEDDING_MODEL_REVISION)
 
 
 @lru_cache(maxsize=1)
