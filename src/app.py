@@ -35,6 +35,10 @@ try:
     model = xgb.XGBClassifier()
     model.load_model(os.path.join(PROJECT_ROOT, "models", "model.json"))
     explainer = shap.TreeExplainer(model)
+    # Honest tri-state: True/False from the artifact, or None if the artifact
+    # doesn't say. Never defaulted, since a wrong-but-confident literal here
+    # survives the next artifact swap the same way a wrong True did.
+    calibrated = meta.get("calibration_used_for_evaluation")
 except Exception as e:
     raise RuntimeError(f"Failed to load model files: {str(e)}")
 
@@ -68,7 +72,7 @@ async def assess_patient(payload: PatientVitalsRequest):
                 }
             ],
             "recommended_investigations": ["Immediate Oxygen Therapy", "Emergency Medical Transfer"],
-            "model_metadata": {"version": meta["model_version"], "calibrated": True}
+            "model_metadata": {"version": meta["model_version"], "calibrated": calibrated}
         }
         
     # 2. Vectorize Data for XGBoost
@@ -142,7 +146,7 @@ async def assess_patient(payload: PatientVitalsRequest):
         "recommended_investigations": list(set(investigations)),
         "model_metadata": {
             "version": meta["model_version"],
-            "calibrated": True
+            "calibrated": calibrated
         }
     }
 
